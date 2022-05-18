@@ -1,0 +1,25 @@
+channels:
+  - conda-forge
+dependencies:
+  - python =3.10
+  - fastapi ~=0.78.0  
+  # - habanero ~=1.2.0
+  - sqlalchemy
+  - alembic
+  # These are from the 'fastapi[all]' dependency
+  - requests >=2.24.0,<3.0.0
+  - jinja2 >=2.11.2,<4.0.0
+  - python-multipart >=0.0.5,<0.0.6
+  - itsdangerous >=1.1.0,<3.0.0
+  - pyyaml >=5.3.1,<7.0.0
+  - ujson >=4.0.1,!=4.0.2,!=4.1.0,!=4.2.0,!=4.3.0,!=5.0.0,!=5.1.0,<6.0.0
+  - orjson >=3.2.1,<4.0.0
+  - email_validator >=1.1.1,<2.0.0
+  - uvicorn[standard] >=0.12.0,<0.18.0
+category: main
+platforms:
+  - linux-64
+  - linux-aarch64
+  - osx-64
+  - osx-arm64
+  - win-64
