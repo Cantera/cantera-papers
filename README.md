@@ -17,3 +17,13 @@ This updates the `conda-lock.yml` file. Then run:
 ```shell
 conda-lock install --name <your-environment-name> --mamba
 ```
+
+## Running the app locally
+
+The app code is located in the `app` folder. To run the application, install the dependencies as above. Then start `uvicorn` from the root of the repository (not the `app` folder):
+
+```shell
+uvicorn app.main:app --reload
+```
+
+This runs the `app` object in the `app.main` module. The `--reload` flag causes `uvicorn` to watch the files in the `app` package and restart the server when changes are made.
