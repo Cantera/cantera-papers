@@ -7,4 +7,5 @@ dependencies:
   - black
   - flake8
   - isort
+  - ipython >=8.0  # useful for debugging asyncio code
 category: dev

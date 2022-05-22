@@ -3,10 +3,10 @@ channels:
 dependencies:
   - python =3.10
   - fastapi ~=0.78.0  
-  # - habanero ~=1.2.0
   - sqlalchemy
   - httpx
   - alembic
+  - python-dotenv
   # These are from the 'fastapi[all]' dependency
   - requests >=2.24.0,<3.0.0
   - jinja2 >=2.11.2,<4.0.0
