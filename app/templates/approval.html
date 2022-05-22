@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<head>
+    <title>Paper Approvals</title>
+    <script src="/static/htmx.min.js" ></script>
+    <script src="/static/htmx-json-enc.js" ></script>
+</head>
+
+<body>
+    <h1>Paper Approvals</h1>
+    <table>
+        <tbody>
+        {% for paper in papers %}
+        <tr id='row-id-{{ paper.id }}'>
+            <td>{{ paper.id }}</td>
+            <td>{{ paper.doi }}</td>
+            <td>{{ paper.title }}</td>
+            <td>
+                <input type='checkbox' id='approve-id-{{ paper.id }}'{% if paper.is_approved %} checked{% endif %}
+                       hx-post='/approve' hx-ext='json-enc' hx-vals='{"id": {{ paper.id }}}'
+                       hx-target='#row-id-{{ paper.id }}'>
+                <label for='approve-id-{{ paper.id }}'> Approve</label>
+            </td>
+            <td>
+                <input type='checkbox' id='display-id-{{ paper.id }}'{% if paper.is_displayed %} checked{% endif %}
+                       hx-post='/display' hx-ext='json-enc' hx-vals='{"id": {{ paper.id }}}' hx-swap='outerHTML'>
+                <label for='display-id-{{ paper.id }}'> Display</label>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <!-- <script>htmx.logAll()</script> -->
+</body>
