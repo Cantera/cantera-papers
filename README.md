@@ -4,6 +4,8 @@ This repository hosts the code for the Cantera `papers` application.
 
 `papers` ingests DOIs of user-submitted papers where they used Cantera and produces a nicely formatted page listing each paper.
 
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/Cantera/cantera-papers/main.svg)](https://results.pre-commit.ci/latest/github/Cantera/cantera-papers/main)
+
 ## Dependency Management
 
 We use `conda-lock` for dependency management. To update a dependency, edit `environment.yml` for dependencies of the main application, or `dev-environment.yml` for dependencies required to develop the application. After updating one of the files, run:
