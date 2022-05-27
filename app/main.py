@@ -1,17 +1,17 @@
-from typing import Optional
 from enum import Enum
-from fastapi import FastAPI, Depends, Request
+from pathlib import Path
+from typing import Optional, cast
+
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from pathlib import Path
 
-from .external import datacite_request, crossref_request
-
-from . import models, crud
+from . import crud, models
 from .database import SessionLocal, engine
+from .external import crossref_request, datacite_request
 
 HERE = Path(__file__).parent
 templates = Jinja2Templates(directory=HERE / "templates")
@@ -69,6 +69,8 @@ async def display_all_papers(request: Request, db: Session = Depends(get_db)):
 @app.post("/approve", response_class=HTMLResponse)
 async def approve_a_paper(paper_id: ApprovalModel, db: Session = Depends(get_db)):
     db_paper = db.get(entity=models.Paper, ident=paper_id.id)
+    if db_paper is None:
+        raise HTTPException(status_code=404, detail="Item not found")
     db_paper.is_approved = not db_paper.is_approved
     db_paper.is_displayed = db_paper.is_approved
     db.commit()
@@ -81,13 +83,15 @@ async def approve_a_paper(paper_id: ApprovalModel, db: Session = Depends(get_db)
             <td>{db_paper.title}</td>
             <td>
                 <input type='checkbox' id='approve-id-{paper_id.id}'{checked}
-                       hx-post='/approve' hx-ext='json-enc' hx-vals='{{"id": {paper_id.id}}}'
+                       hx-post='/approve' hx-ext='json-enc'
+                       hx-vals='{{"id": {paper_id.id}}}'
                        hx-target='#row-id-{paper_id.id}'>
                 <label for='approve-id-{paper_id.id}'> Approve</label>
             </td>
             <td>
                 <input type='checkbox' id='display-id-{paper_id.id}'{checked}
-                       hx-post='/display' hx-ext='json-enc' hx-vals='{{"id": {paper_id.id}}}' hx-swap='outerHTML'>
+                       hx-post='/display' hx-ext='json-enc'
+                       hx-vals='{{"id": {paper_id.id}}}' hx-swap='outerHTML'>
                 <label for='display-id-{paper_id.id}'> Display</label>
             </td>
         </tr>
@@ -106,13 +110,16 @@ async def display_papers_for_approval(request: Request, db: Session = Depends(ge
 @app.post("/display", response_class=HTMLResponse)
 async def display_a_paper(paper_id: ApprovalModel, db: Session = Depends(get_db)):
     db_paper = db.get(entity=models.Paper, ident=paper_id.id)
+    if db_paper is None:
+        raise HTTPException(status_code=404, detail="Item not found")
     db_paper.is_displayed = not db_paper.is_displayed
     db.commit()
     db.refresh(db_paper)
     checked = " checked" if db_paper.is_displayed else ""
     response = f"""\
                 <input type='checkbox' id='display-id-{paper_id.id}'{checked}
-                       hx-post='/display' hx-ext='json-enc' hx-vals='{{"id": {paper_id.id}}}' hx-swap='outerHTML'>
+                       hx-post='/display' hx-ext='json-enc'
+                       hx-vals='{{"id": {paper_id.id}}}' hx-swap='outerHTML'>
     """
     return response
 
@@ -128,8 +135,9 @@ async def submit_a_paper(request: PaperRequest, db: Session = Depends(get_db)):
     else:
         data = {}
     db_paper = crud.create_db_paper(db, data=data)
-    db_paper.doi = data["doi"]
-    db_paper.title = data["title"]
-    db_paper.url = data["url"]
+    paper = cast(PaperInfo, db_paper)
+    paper.doi = data["doi"]
+    paper.title = data["title"]
+    paper.url = data["url"]
 
-    return db_paper
+    return paper

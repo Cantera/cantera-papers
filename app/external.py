@@ -1,6 +1,7 @@
-import httpx
-from urllib.parse import quote
 from typing import Any
+from urllib.parse import quote
+
+import httpx
 
 DATACITE_URL = "https://api.datacite.org"
 DATACITE_HEADERS = {"Accept": "application/vnd.api+json"}

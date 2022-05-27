@@ -1,5 +1,7 @@
 from typing import Any
+
 from sqlalchemy.orm import Session
+
 from . import models
 
 
@@ -19,7 +21,7 @@ def db_paper_doi_exists(db: Session, doi: str) -> models.Paper | None:
     return db.query(models.Paper).filter(models.Paper.doi == doi).first()
 
 
-def get_db_paper_by_doi(db: Session, doi: str) -> models.Paper:
+def get_db_paper_by_doi(db: Session, doi: str) -> models.Paper | None:
     return (
         db.query(models.Paper)
         .filter(models.Paper.doi == doi, models.Paper.is_displayed)
