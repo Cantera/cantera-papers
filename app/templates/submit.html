@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<head>
+    <title>Paper Approvals</title>
+    <script src="/static/htmx.min.js" ></script>
+    <script src="/static/htmx-json-enc.js" ></script>
+</head>
+
+<body>
+    <h1>Submit a Paper</h1>
+
+    <form hx-post='/submit' hx-swap='outerHTML'>
+        <label for='doi'>Enter a DOI: </label>
+        <input type='text' name='doi' id='doi' required>
+        <label for='source'>Choose the source for the DOI: </label>
+        <select name='source' id='source' required>
+            <option value="">--Please choose an option--</option>
+            <option value="figshare">Figshare</option>
+            <option value="zenodo">Zenodo</option>
+            <option value="crossref">Crossref</option>
+        </select>
+        <input type='submit' value='Submit'>
+    </form>
+</body>

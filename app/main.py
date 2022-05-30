@@ -2,7 +2,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, cast
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -33,11 +33,6 @@ class DataSource(str, Enum):
     figshare = "figshare"
     zenodo = "zenodo"
     crossref = "crossref"
-
-
-class PaperRequest(BaseModel):
-    doi: str
-    source: DataSource
 
 
 class PaperModel(BaseModel):
@@ -122,10 +117,18 @@ async def display_a_paper(paper_id: ApprovalModel, db: Session = Depends(get_db)
     return response
 
 
-@app.post("/submit", response_model=PaperInfo)
-async def submit_a_paper(request: PaperRequest, db: Session = Depends(get_db)):
-    source = request.source
-    doi = request.doi
+@app.get("/submit", response_class=HTMLResponse)
+async def display_submit_page(request: Request):
+    return templates.TemplateResponse("submit.html", {"request": request})
+
+
+@app.post("/submit", response_class=HTMLResponse)
+async def submit_a_paper(
+    request: Request,
+    source: str = Form(),
+    doi: str = Form(),
+    db: Session = Depends(get_db),
+):
     if source == DataSource.figshare or source == DataSource.zenodo:
         data = await datacite_request(doi)
     elif source == DataSource.crossref:
@@ -138,4 +141,6 @@ async def submit_a_paper(request: PaperRequest, db: Session = Depends(get_db)):
     paper.title = data["title"]
     paper.url = data["url"]
 
-    return paper
+    return templates.TemplateResponse(
+        "response.html", {"request": request, "datasource": DataSource}
+    )
