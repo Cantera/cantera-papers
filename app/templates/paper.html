@@ -1,0 +1,21 @@
+                <td>{{ paper.id }}</td>
+                <td>{{ paper.doi }}</td>
+                <td>{{ paper.title }}</td>
+                <td>
+                    <input type='checkbox' id='approve-id-{{ paper.id }}'
+                           {% if paper.is_approved %}checked{% endif %}
+                           hx-post='/approve/{{ paper.id }}'
+                           hx-ext='json-enc'
+                           hx-vals='{"approve": "true"}'
+                           hx-target='#row-id-{{ paper.id }}'>
+                    <label for='approve-id-{{ paper.id }}'> Approve</label>
+                </td>
+                <td>
+                    <input type='checkbox' id='display-id-{{ paper.id }}'
+                           {% if paper.is_displayed %}checked{% endif %}
+                           hx-post='/approve/{{ paper.id }}'
+                           hx-ext='json-enc'
+                           hx-vals='{"display": "true"}'
+                           hx-target='#row-id-{{ paper.id }}'>
+                    <label for='display-id-{{ paper.id }}'> Display</label>
+                </td>

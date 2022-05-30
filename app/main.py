@@ -50,7 +50,8 @@ class PaperInfo(PaperModel):
 
 
 class ApprovalModel(BaseModel):
-    id: int
+    approve: bool | None = None
+    display: bool | None = None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -61,34 +62,26 @@ async def display_all_papers(request: Request, db: Session = Depends(get_db)):
     )
 
 
-@app.post("/approve", response_class=HTMLResponse)
-async def approve_a_paper(paper_id: ApprovalModel, db: Session = Depends(get_db)):
-    db_paper = db.get(entity=models.Paper, ident=paper_id.id)
+@app.post("/approve/{paper_id}", response_class=HTMLResponse)
+async def approve_a_paper(
+    paper_id: int,
+    json_request: ApprovalModel,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    db_paper = db.get(entity=models.Paper, ident=paper_id)
     if db_paper is None:
         raise HTTPException(status_code=404, detail="Item not found")
-    db_paper.is_approved = not db_paper.is_approved
-    db_paper.is_displayed = db_paper.is_approved
+    if json_request.approve is not None:
+        db_paper.is_approved = not db_paper.is_approved
+        db_paper.is_displayed = db_paper.is_approved
+    elif json_request.display is not None:
+        db_paper.is_displayed = not db_paper.is_displayed
     db.commit()
     db.refresh(db_paper)
-    checked = " checked" if db_paper.is_approved else ""
-    response = f"""\
-            <td>{paper_id.id}</td>
-            <td>{db_paper.doi}</td>
-            <td>{db_paper.title}</td>
-            <td>
-                <input type='checkbox' id='approve-id-{paper_id.id}'{checked}
-                       hx-post='/approve' hx-ext='json-enc'
-                       hx-vals='{{"id": {paper_id.id}}}'
-                       hx-target='#row-id-{paper_id.id}'>
-                <label for='approve-id-{paper_id.id}'> Approve</label>
-            </td>
-            <td>
-                <input type='checkbox' id='display-id-{paper_id.id}'{checked}
-                       hx-post='/display' hx-ext='json-enc'
-                       hx-vals='{{"id": {paper_id.id}}}' hx-swap='outerHTML'>
-                <label for='display-id-{paper_id.id}'> Display</label>
-            </td>
-    """
+    response = templates.TemplateResponse(
+        "paper.html", {"request": request, "paper": db_paper}
+    )
     return response
 
 
@@ -98,23 +91,6 @@ async def display_papers_for_approval(request: Request, db: Session = Depends(ge
     return templates.TemplateResponse(
         "approval.html", {"request": request, "papers": papers}
     )
-
-
-@app.post("/display", response_class=HTMLResponse)
-async def display_a_paper(paper_id: ApprovalModel, db: Session = Depends(get_db)):
-    db_paper = db.get(entity=models.Paper, ident=paper_id.id)
-    if db_paper is None:
-        raise HTTPException(status_code=404, detail="Item not found")
-    db_paper.is_displayed = not db_paper.is_displayed
-    db.commit()
-    db.refresh(db_paper)
-    checked = " checked" if db_paper.is_displayed else ""
-    response = f"""\
-                <input type='checkbox' id='display-id-{paper_id.id}'{checked}
-                       hx-post='/display' hx-ext='json-enc'
-                       hx-vals='{{"id": {paper_id.id}}}' hx-swap='outerHTML'>
-    """
-    return response
 
 
 @app.get("/submit", response_class=HTMLResponse)
