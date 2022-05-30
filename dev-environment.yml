@@ -8,4 +8,6 @@ dependencies:
   - flake8
   - isort
   - ipython >=8.0  # useful for debugging asyncio code
+  - sqlalchemy2-stubs
+  - mypy
 category: dev
