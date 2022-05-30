@@ -8,6 +8,15 @@
 <body>
     <h1>Paper Approvals</h1>
     <table>
+        <thead>
+            <tr>
+                <th>Paper ID</th>
+                <th>DOI</th>
+                <th>Title</th>
+                <th>Approve</th>
+                <th>Display</th>
+            </tr>
+        </thead>
         <tbody>
         {% for paper in papers %}
             <tr id='row-id-{{ paper.id }}'>

@@ -2,7 +2,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional, cast
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi import Depends, FastAPI, Form, Header, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -64,25 +64,37 @@ async def display_all_papers(request: Request, db: Session = Depends(get_db)):
 
 @app.post("/approve/{paper_id}", response_class=HTMLResponse)
 async def approve_a_paper(
-    paper_id: int,
-    json_request: ApprovalModel,
     request: Request,
+    paper_id: int,
+    approve: bool | None = Form(None),
+    display: bool | None = Form(None),
+    hx_trigger_name: str | None = Header(None),
     db: Session = Depends(get_db),
 ):
     db_paper = db.get(entity=models.Paper, ident=paper_id)
     if db_paper is None:
         raise HTTPException(status_code=404, detail="Item not found")
-    if json_request.approve is not None:
-        db_paper.is_approved = not db_paper.is_approved
-        db_paper.is_displayed = db_paper.is_approved
-    elif json_request.display is not None:
-        db_paper.is_displayed = not db_paper.is_displayed
-    db.commit()
-    db.refresh(db_paper)
-    response = templates.TemplateResponse(
-        "paper.html", {"request": request, "paper": db_paper}
-    )
-    return response
+    approve = approve is not None
+    display = display is not None
+    successful_approval = False
+    if hx_trigger_name == "approve":
+        db_paper.is_approved = approve
+        db_paper.is_displayed = approve
+        db.commit()
+        db.refresh(db_paper)
+        successful_approval = True
+    elif hx_trigger_name == "display":
+        db_paper.is_displayed = display
+        db.commit()
+        db.refresh(db_paper)
+        successful_approval = True
+
+    if successful_approval:
+        return templates.TemplateResponse(
+            "paper.html", {"request": request, "paper": db_paper}
+        )
+    else:
+        raise HTTPException(status_code=500, detail="Error setting approval")
 
 
 @app.get("/approve", response_class=HTMLResponse)

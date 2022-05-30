@@ -2,20 +2,24 @@
                 <td>{{ paper.doi }}</td>
                 <td>{{ paper.title }}</td>
                 <td>
+                    <form method="post">
                     <input type='checkbox' id='approve-id-{{ paper.id }}'
+                           name='approve'
                            {% if paper.is_approved %}checked{% endif %}
                            hx-post='/approve/{{ paper.id }}'
-                           hx-ext='json-enc'
-                           hx-vals='{"approve": "true"}'
+                           hx-trigger='click'
                            hx-target='#row-id-{{ paper.id }}'>
                     <label for='approve-id-{{ paper.id }}'> Approve</label>
+                    </form>
                 </td>
                 <td>
+                    <form method="post">
                     <input type='checkbox' id='display-id-{{ paper.id }}'
+                           name='display'
                            {% if paper.is_displayed %}checked{% endif %}
                            hx-post='/approve/{{ paper.id }}'
-                           hx-ext='json-enc'
-                           hx-vals='{"display": "true"}'
+                           hx-trigger='click'
                            hx-target='#row-id-{{ paper.id }}'>
                     <label for='display-id-{{ paper.id }}'> Display</label>
+                    </form>
                 </td>
