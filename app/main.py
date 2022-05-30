@@ -77,7 +77,6 @@ async def approve_a_paper(paper_id: ApprovalModel, db: Session = Depends(get_db)
     db.refresh(db_paper)
     checked = " checked" if db_paper.is_approved else ""
     response = f"""\
-        <tr id='row-id-{paper_id.id}'>
             <td>{paper_id.id}</td>
             <td>{db_paper.doi}</td>
             <td>{db_paper.title}</td>
@@ -94,7 +93,6 @@ async def approve_a_paper(paper_id: ApprovalModel, db: Session = Depends(get_db)
                        hx-vals='{{"id": {paper_id.id}}}' hx-swap='outerHTML'>
                 <label for='display-id-{paper_id.id}'> Display</label>
             </td>
-        </tr>
     """
     return response
 
