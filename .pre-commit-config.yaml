@@ -33,3 +33,4 @@ repos:
     - httpx
     - fastapi
     - pytest
+    - types-itsdangerous
