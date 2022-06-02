@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional, cast
 
 import httpx
-from fastapi import Depends, FastAPI, Form, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Form, Header, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -19,7 +19,7 @@ from .external import crossref_request, datacite_request
 HERE = Path(__file__).parent
 templates = Jinja2Templates(directory=HERE / "templates")
 
-app = FastAPI(debug=True)
+app = FastAPI()
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 models.Base.metadata.create_all(bind=engine)
 
@@ -52,11 +52,6 @@ class PaperInfo(PaperModel):
     url: Optional[str]
 
 
-class ApprovalModel(BaseModel):
-    approve: bool | None = None
-    display: bool | None = None
-
-
 @app.get("/", response_class=HTMLResponse)
 async def display_all_papers(request: Request, db: Session = Depends(get_db)):
     papers = db.query(models.Paper).filter(models.Paper.is_displayed).all()
@@ -66,19 +61,32 @@ async def display_all_papers(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/github_login", response_class=RedirectResponse)
-async def github_login(settings: config.Settings = Depends(get_settings)):
-    scope = "read:org"
+async def github_login(
+    scope: str = Query(default="user:email"),
+    redirect_uri: str = Query(regex="^submit|approve$"),
+    settings: config.Settings = Depends(get_settings),
+):
     client_id = settings.github_client_id
     state = settings.secret_state
-    return (
+    url = (
         "https://github.com/login/oauth/authorize?"
         f"scope={scope}&client_id={client_id}&state={state}"
+        "&redirect_uri="
+        f"http://127.0.0.1:8000/github_callback/{redirect_uri}"
     )
+    return RedirectResponse(url, status_code=302)
 
 
 @app.get("/github_callback")
+async def handle_callback_eror():
+    pass
+
+
+@app.get("/github_callback/{redirect_uri}")
 async def github_callback(
-    request: Request, settings: config.Settings = Depends(get_settings)
+    redirect_uri: str,
+    request: Request,
+    settings: config.Settings = Depends(get_settings),
 ):
     code = request.query_params.get("code")
     if code is None:
@@ -135,25 +143,42 @@ async def github_callback(
         "gh_login": profile["login"],
         "gh_email": profile["email"],
     }
-    async with httpx.AsyncClient() as client:
-        membership = await client.get(
-            "https://api.github.com/orgs/Cantera/teams/Committers/memberships/"
-            f"{profile['login']}",
-            headers={
-                "Authorization": f"token {access_token}",
-                "Accept": "application/json",
-            },
-        )
-    if membership.status_code == 200:
-        actor["teams"] = "Committers"
+    if "read:org" not in github_response.get("scope"):
+        actor["teams"] = None
     else:
-        actor["teams"] = ""
+        async with httpx.AsyncClient() as client:
+            membership = await client.get(
+                "https://api.github.com/orgs/Cantera/teams/Committers/memberships/"
+                f"{profile['login']}",
+                headers={
+                    "Authorization": f"token {access_token}",
+                    "Accept": "application/json",
+                },
+            )
+        if membership.status_code == 200:
+            actor["teams"] = "Committers"
+        else:
+            actor["teams"] = ""
 
-    response = RedirectResponse("/approve")
-    s = URLSafeSerializer(settings.cookie_secret, salt=b"cantera-papers-approve")
-    cookie_value = s.dumps(actor)
-    response.set_cookie("cantera-papers-auth-cookie", cookie_value)
+    response = RedirectResponse(f"/{redirect_uri}")
+    s = URLSafeSerializer(settings.cookie_secret, salt=b"cantera-papers")
+    response.set_cookie("cantera-papers-auth-cookie", s.dumps(actor))
     return response
+
+
+@app.get("/approve")
+async def display_papers_for_approval(
+    request: Request,
+    settings: config.Settings = Depends(get_settings),
+    db: Session = Depends(get_db),
+):
+    logged_in = False
+    if await check_for_auth(request, settings, approve_permission=True):
+        logged_in = True
+    papers = db.query(models.Paper).all()
+    return templates.TemplateResponse(
+        "approval.html", {"request": request, "papers": papers, "logged_in": logged_in}
+    )
 
 
 @app.post("/approve/{paper_id}", response_class=HTMLResponse)
@@ -166,9 +191,9 @@ async def approve_a_paper(
     db: Session = Depends(get_db),
     settings: config.Settings = Depends(get_settings),
 ):
-    if await check_for_auth(request, settings) is None:
+    if await check_for_auth(request, settings, approve_permission=True) is None:
         raise HTTPException(
-            status_code=403, detail="You're not authorized to view this page"
+            status_code=403, detail="You're not authorized to approve papers"
         )
     db_paper = db.get(entity=models.Paper, ident=paper_id)
     if db_paper is None:
@@ -196,53 +221,31 @@ async def approve_a_paper(
         raise HTTPException(status_code=500, detail="Error setting approval")
 
 
-# User goes to /approve
-# /approve depends on some authorization checking function which is not an endpoint
-# That function checks for a cookie with login data, if it finds it, it returns the
-# user back to /approve
-# If no cookie is found, that function redirects to the /github_login endpoint which
-# redirects to GitHub for login
-# When GitHub calls-back to /github_callback, that function collects the user data from
-# the GitHub API and stores it in a cookie, then redirects back to /approve
-# Since the cookie is now set, the auth checking function reads the cookie and we're
-# all set
-
-# What query parameters does the function need to take? Probably just the headers, which
-# is where the cookie will be stored. Actually, cookies are handled by a separate type.
-
-# Questions:
-# 1. ~How to store the logged-in state?~ Cookie
-# 2. How to handle the submission page?
-# 3. How to secure the API (cURL access)?
 async def check_for_auth(
     request: Request,
     settings: config.Settings,
+    approve_permission: bool = False,
 ) -> None | bool:
     cantera_papers_auth_cookie = request.cookies.get("cantera-papers-auth-cookie")
     if cantera_papers_auth_cookie is None:
         return None
-    s = URLSafeSerializer(settings.cookie_secret, salt=b"cantera-papers-approve")
+    s = URLSafeSerializer(settings.cookie_secret, salt=b"cantera-papers")
     try:
-        auth_cookie = s.loads(cantera_papers_auth_cookie)
+        actor = s.loads(cantera_papers_auth_cookie)
     except BadSignature:
-        return None
-    if auth_cookie["teams"] == "Committers":
+        raise HTTPException(status_code=403, detail="Bad signature on cookie")
+    if approve_permission:
+        if actor["teams"] is None:
+            return None
+        if actor["teams"] == "Committers":
+            return True
+        else:
+            raise HTTPException(
+                status_code=403, detail="You need to be a committer to approve papers"
+            )
+    elif actor.get("gh_email") is not None:
         return True
     raise HTTPException(status_code=401, detail="Unauthorized")
-
-
-@app.get("/approve")
-async def display_papers_for_approval(
-    request: Request,
-    settings: config.Settings = Depends(get_settings),
-    db: Session = Depends(get_db),
-):
-    if await check_for_auth(request, settings) is None:
-        return RedirectResponse("/github_login")
-    papers = db.query(models.Paper).all()
-    return templates.TemplateResponse(
-        "approval.html", {"request": request, "papers": papers}
-    )
 
 
 @app.get("/submit", response_class=HTMLResponse)
@@ -256,7 +259,10 @@ async def submit_a_paper(
     source: str = Form(),
     doi: str = Form(),
     db: Session = Depends(get_db),
+    settings: config.Settings = Depends(get_settings),
 ):
+    if await check_for_auth(request, settings) is None:
+        return RedirectResponse("/github_login?redirect_uri=submit", status_code=302)
     if source == DataSource.figshare or source == DataSource.zenodo:
         data = await datacite_request(doi)
     elif source == DataSource.crossref:

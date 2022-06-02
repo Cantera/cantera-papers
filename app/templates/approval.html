@@ -7,6 +7,7 @@
 
 <body>
     <h1>Paper Approvals</h1>
+    {% if logged_in %}
     <table>
         <thead>
             <tr>
@@ -25,5 +26,8 @@
         {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <a href="/github_login?redirect_uri=approve&scope=read:org">GitHub Login</a>
+    {% endif %}
     <!-- <script>htmx.logAll()</script> -->
 </body>
