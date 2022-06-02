@@ -1,14 +1,23 @@
 from enum import Enum
 from pathlib import Path
-from typing import Optional, cast
+from typing import cast
 
 import httpx
-from fastapi import Depends, FastAPI, Form, Header, HTTPException, Query, Request
+from fastapi import (
+    Cookie,
+    Depends,
+    FastAPI,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+)
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, URLSafeSerializer
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from . import config, crud, models
@@ -38,6 +47,17 @@ class DataSource(str, Enum):
     crossref = "crossref"
 
 
+class ActorModel(BaseModel):
+    display: str = Field(..., alias="login")
+    gh_id: str = Field(..., alias="id")
+    gh_name: str = Field(..., alias="name")
+    gh_email: str = Field(..., alias="email")
+    teams: str | None = None
+
+    class Config:
+        allow_population_by_field_name = True
+
+
 class PaperModel(BaseModel):
     doi: str
     title: str
@@ -49,7 +69,7 @@ class PaperModel(BaseModel):
 
 
 class PaperInfo(PaperModel):
-    url: Optional[str]
+    url: str | None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -136,16 +156,8 @@ async def github_callback(
                 },
             )
         ).json()
-    actor = {
-        "display": profile["login"],
-        "gh_id": str(profile["id"]),
-        "gh_name": profile["name"],
-        "gh_login": profile["login"],
-        "gh_email": profile["email"],
-    }
-    if "read:org" not in github_response.get("scope"):
-        actor["teams"] = None
-    else:
+    actor = ActorModel(**profile)
+    if "read:org" in github_response.get("scope"):
         async with httpx.AsyncClient() as client:
             membership = await client.get(
                 "https://api.github.com/orgs/Cantera/teams/Committers/memberships/"
@@ -156,26 +168,61 @@ async def github_callback(
                 },
             )
         if membership.status_code == 200:
-            actor["teams"] = "Committers"
+            actor.teams = "Committers"
         else:
-            actor["teams"] = ""
+            actor.teams = ""
 
     response = RedirectResponse(f"/{redirect_uri}")
     s = URLSafeSerializer(settings.cookie_secret, salt=b"cantera-papers")
-    response.set_cookie("cantera-papers-auth-cookie", s.dumps(actor))
+    cookie_value = s.dumps(actor.dict())
+    cookie_key = "cantera_papers_auth_token"
+    response.set_cookie(
+        key=cookie_key,
+        value=cookie_value,
+        secure=True,
+        httponly=True,
+        samesite="strict",
+    )
     return response
 
 
-@app.get("/approve")
+@app.get("/logout", response_class=RedirectResponse)
+async def logout(redirect_uri: str):
+    response = RedirectResponse(f"/{redirect_uri}")
+    response.delete_cookie(
+        "cantera_papers_auth_token", secure=True, httponly=True, samesite="strict"
+    )
+    return response
+
+
+async def get_actor_from_cookie(
+    cantera_papers_auth_token: str | None = Cookie(default=None),
+    settings: config.Settings = Depends(get_settings),
+) -> ActorModel | None:
+    if cantera_papers_auth_token is None:
+        return None
+
+    s = URLSafeSerializer(settings.cookie_secret, salt=b"cantera-papers")
+    try:
+        actor = ActorModel(**s.loads(cantera_papers_auth_token))
+    except BadSignature:
+        raise HTTPException(status_code=403, detail="Bad signature on cookie")
+
+    return actor
+
+
+@app.get("/approve", response_class=HTMLResponse)
 async def display_papers_for_approval(
     request: Request,
-    settings: config.Settings = Depends(get_settings),
     db: Session = Depends(get_db),
+    actor: ActorModel | None = Depends(get_actor_from_cookie),
 ):
     logged_in = False
-    if await check_for_auth(request, settings, approve_permission=True):
+    papers = None
+    if actor is not None and actor.teams == "Committers":
         logged_in = True
-    papers = db.query(models.Paper).all()
+        papers = db.query(models.Paper).all()
+
     return templates.TemplateResponse(
         "approval.html", {"request": request, "papers": papers, "logged_in": logged_in}
     )
@@ -189,11 +236,11 @@ async def approve_a_paper(
     display: bool | None = Form(None),
     hx_trigger_name: str | None = Header(None),
     db: Session = Depends(get_db),
-    settings: config.Settings = Depends(get_settings),
+    actor: ActorModel | None = Depends(get_actor_from_cookie),
 ):
-    if await check_for_auth(request, settings, approve_permission=True) is None:
+    if actor is None or actor.teams != "Committers":
         raise HTTPException(
-            status_code=403, detail="You're not authorized to approve papers"
+            status_code=403, detail="Must be a committer to approve papers"
         )
     db_paper = db.get(entity=models.Paper, ident=paper_id)
     if db_paper is None:
@@ -221,36 +268,14 @@ async def approve_a_paper(
         raise HTTPException(status_code=500, detail="Error setting approval")
 
 
-async def check_for_auth(
-    request: Request,
-    settings: config.Settings,
-    approve_permission: bool = False,
-) -> None | bool:
-    cantera_papers_auth_cookie = request.cookies.get("cantera-papers-auth-cookie")
-    if cantera_papers_auth_cookie is None:
-        return None
-    s = URLSafeSerializer(settings.cookie_secret, salt=b"cantera-papers")
-    try:
-        actor = s.loads(cantera_papers_auth_cookie)
-    except BadSignature:
-        raise HTTPException(status_code=403, detail="Bad signature on cookie")
-    if approve_permission:
-        if actor["teams"] is None:
-            return None
-        if actor["teams"] == "Committers":
-            return True
-        else:
-            raise HTTPException(
-                status_code=403, detail="You need to be a committer to approve papers"
-            )
-    elif actor.get("gh_email") is not None:
-        return True
-    raise HTTPException(status_code=401, detail="Unauthorized")
-
-
 @app.get("/submit", response_class=HTMLResponse)
-async def display_submit_page(request: Request):
-    return templates.TemplateResponse("submit.html", {"request": request})
+async def display_submit_page(
+    request: Request, actor: ActorModel | None = Depends(get_actor_from_cookie)
+):
+    logged_in = actor is not None
+    return templates.TemplateResponse(
+        "submit.html", {"request": request, "logged_in": logged_in, "actor": actor}
+    )
 
 
 @app.post("/submit", response_class=HTMLResponse)
@@ -259,10 +284,12 @@ async def submit_a_paper(
     source: str = Form(),
     doi: str = Form(),
     db: Session = Depends(get_db),
-    settings: config.Settings = Depends(get_settings),
+    actor: ActorModel | None = Depends(get_actor_from_cookie),
 ):
-    if await check_for_auth(request, settings) is None:
-        return RedirectResponse("/github_login?redirect_uri=submit", status_code=302)
+    if actor is None:
+        raise HTTPException(
+            status_code=403, detail="No GitHub login available, cannot submit papers"
+        )
     if source == DataSource.figshare or source == DataSource.zenodo:
         data = await datacite_request(doi)
     elif source == DataSource.crossref:

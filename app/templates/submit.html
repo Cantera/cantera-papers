@@ -17,7 +17,11 @@
             <option value="zenodo">Zenodo</option>
             <option value="crossref">Crossref</option>
         </select>
-        <input type='submit' value='Submit'>
+        <input type='submit' value='Submit'{% if not logged_in %} disabled{% endif %}>
     </form>
+    {% if not logged_in %}
     <a href="/github_login?redirect_uri=submit" style="appearance: button;">GitHub Login</a>
+    {% else %}
+    Welcome {{ actor["gh_name"] }}. <a href="/logout?redirect_uri=submit">Logout</a>
+    {% endif %}
 </body>
