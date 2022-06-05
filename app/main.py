@@ -172,7 +172,7 @@ async def github_callback(
         else:
             actor.teams = ""
 
-    response = RedirectResponse(f"/{redirect_uri}")
+    response = RedirectResponse(f"/{redirect_uri}", status_code=302)
     s = URLSafeSerializer(settings.cookie_secret, salt=b"cantera-papers")
     cookie_value = s.dumps(actor.dict())
     cookie_key = "cantera_papers_auth_token"

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html prefix="
+og: http://ogp.me/ns# article: http://ogp.me/ns/article#
+"
+lang="en">
+{% block head %}
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Cantera Papers | Cantera</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css" integrity="sha384-zCbKRCUGaJDkqS1kPbPd7TveP5iyJE0EjAuZQTgFLD2ylzuqKfdKlfG/eSrtxUkn" crossorigin="anonymous">
+  <link rel="stylesheet" href="{{ url_for('static', path='/css/custom.css') }}" type="text/css" />
+  <link rel="shortcut icon" href="{{ url_for('static', path='/img/favicon.ico') }}" sizes="16x16"/>
+</head>
+{% endblock %}
+<body>
+<a href="#content" class="sr-only sr-only-focusable">Skip to main content</a>
+
+<!-- Menubar -->
+
+<nav class="navbar navbar-expand-md navbar-light bg-light static-top mb-4">
+  <div class="container"><!-- This keeps the margins nice -->
+      <a class="navbar-brand" href="https://cantera.org/index.html">
+      <img src="{{ url_for('static', path='/img/cantera-logo.png') }}" alt="Cantera" id="logo" class="d-inline-block align-top">
+      </a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#bs-navbar" aria-controls="bs-navbar" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="bs-navbar">
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item">
+            <a href="https://cantera.org/install/index.html" class="nav-link">Install</a>
+          </li>
+          <li class="nav-item">
+            <a href="https://cantera.org/tutorials/index.html" class="nav-link">Tutorials</a>
+          </li>
+          <li class="nav-item">
+            <a href="https://cantera.org/examples/index.html" class="nav-link">Examples</a>
+          </li>
+          <li class="nav-item">
+            <a href="https://cantera.org/community.html" class="nav-link">Community</a>
+          </li>
+          <li class="nav-item">
+            <a href="https://cantera.org/science/index.html" class="nav-link">Science</a>
+          </li>
+          <li class="nav-item">
+            <a href="https://cantera.org/documentation/index.html" class="nav-link">Documentation</a>
+          </li>
+          <li class="nav-item">
+            <a href="https://cantera.org/blog/index.html" class="nav-link">Blog</a>
+          </li>
+        </ul>
+      </div><!-- /.navbar-collapse -->
+  </div><!-- /.container -->
+</nav>
+<!-- End of Menubar -->
+
+<div class="container" id="content">
+  <div class="body-content">
+    <!--Body content-->
+    {% block content %}{% endblock %}
+    <footer id="footer">
+       <div class="footer" role="navigation">
+         <div class="navbar-text">
+            <ul class="footer-text">
+              <li><a href="#">Home</a></li>
+              <li><a href="community.html#citing-cantera">Citing</a></li>
+              <li><a href="install/index.html">Install</a></li>
+              <li><a href="tutorials/index.html">Tutorials</a></li>
+              <li><a href="examples/index.html">Examples</a></li>
+              <li><a href="community.html">Community</a></li>
+              <li><a href="science/index.html">Science</a></li>
+              <li><a href="documentation/index.html">Documentation</a></li>
+              <li><a href="blog/index.html">Blog</a></li>
+           </ul>
+        </div>
+        <p>Contents © 2022 <a href="mailto:steering@cantera.org">Cantera Developers</a> - Powered by <a href="https://fastapi.tiangolo.com/" rel="nofollow">FastAPI</a></p>
+      </div>
+    </footer>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-fQybjgWLrvvRgtW6bFlB7jaZrFsaBXjsOMm/tB9LTS58ONXgqbR9W8oWht/amnpF" crossorigin="anonymous"></script>
+</body>
+</html>

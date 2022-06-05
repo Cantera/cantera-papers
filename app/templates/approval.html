@@ -1,34 +1,34 @@
-<!DOCTYPE html>
-<head>
-    <title>Paper Approvals</title>
-    <script src="/static/htmx.min.js" ></script>
-    <script src="/static/htmx-json-enc.js" ></script>
-</head>
+{% extends "base.html.j2" %}
+{% block head %}
+  {{ super() }}
+  <script src="{{ url_for('static', path='/js/htmx.min.js') }}"></script>
+{% endblock %}
 
-<body>
-    <h1>Paper Approvals</h1>
+{% block content %}
+  <div class="jumbotron">
+    <h1 class="display-3">Paper Approvals</h1>
     {% if logged_in %}
-    <a href="/logout?redirect_uri=approve">Logout</a>
-    <table>
-        <thead>
-            <tr>
-                <th>Paper ID</th>
-                <th>DOI</th>
-                <th>Title</th>
-                <th>Approve</th>
-                <th>Display</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for paper in papers %}
-            <tr id='row-id-{{ paper.id }}'>
-                {% include "paper.html" %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <a href="/github_login?redirect_uri=approve&scope=read:org">GitHub Login</a>
-    {% endif %}
-    <!-- <script>htmx.logAll()</script> -->
-</body>
+  </div>
+  <p><a class="btn btn-primary" href="/logout?redirect_uri=approve">Logout</a></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Paper ID</th>
+        <th>DOI</th>
+        <th>Title</th>
+        <th>Approve</th>
+        <th>Display</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for paper in papers %}
+      <tr id='row-id-{{ paper.id }}'>
+          {% include "paper.html" %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p><a class="btn btn-primary" href="/github_login?redirect_uri=approve&scope=read:org">GitHub Login</a></p>
+  {% endif %}
+{% endblock %}

@@ -1,3 +1,21 @@
-<div>
+  <div id="thank-you-message" hx-swap-oob="true">
     Your paper has been submitted. Thank you!
-</div>
+  </div>
+  <form hx-post='/submit' hx-swap="outerHTML">
+    <div class="form-group">
+        <label for='doi'>Enter a DOI: </label>
+        <input class='form-control' placeholder='10.0000/123456.7890' type='text' name='doi' id='doi' required>
+    </div>
+    <div class="form-group">
+        <label for='source'>Choose the source for the DOI: </label>
+        <select name='source' id='source' required>
+            <option value="">--Please choose an option--</option>
+            <option value="figshare">Figshare</option>
+            <option value="zenodo">Zenodo</option>
+            <option value="crossref">Crossref</option>
+        </select>
+    </div>
+    <div class="form-group">
+      <button class="btn btn-primary" type='submit' value='Submit'{% if not logged_in %} disabled{% endif %}>Submit</button>
+    </div>
+  </form>

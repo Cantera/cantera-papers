@@ -1,13 +1,26 @@
-<html>
-<head>
-    <title>Cantera Papers</title>
-</head>
-<body>
-    <h1>Papers</h1>
-    <ul>
-    {% for paper in papers %}
-    <li>{{ paper.title }}</li>
-    {% endfor %}
-    </ul>
-</body>
-</html>
+{% extends "base.html.j2" %}
+
+{% block content %}
+    <div class="jumbotron">
+      <h1 class="display-3">Publications Using Cantera</h1>
+      <p class="lead">
+      We're happy to feature the work that our community has done with Cantera. If you've written some work that's available online with a DOI, <a href="/submit">please submit it over here</a>.
+      </p>
+    </div>
+    <div class="container">
+      <div class="row">
+        <div class="card-deck">
+          {% for paper in papers %}
+          <div class="card">
+            <a href="https://doi.org/{{ paper.doi }}" title="{{ paper.title }}">
+              <div class="card-header">{{ paper.title }}</div>
+            </a>
+            <div class="card-body">
+              Lorem Ipsum
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+{% endblock %}

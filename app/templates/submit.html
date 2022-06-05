@@ -1,15 +1,32 @@
-<!DOCTYPE html>
-<head>
-    <title>Paper Submissions</title>
-    <script src="/static/htmx.min.js" ></script>
-</head>
+{% extends "base.html.j2" %}
+{% block head %}
+  {{ super() }}
+  <script src="{{ url_for('static', path='/js/htmx.min.js') }}"></script>
+{% endblock %}
 
-<body>
-    <h1>Submit a Paper</h1>
+{% block content %}
+  <div class="jumbotron">
+    <h1 class="display-3">Submit a Paper</h1>
+    <p class="lead">
+    Please submit the DOI for your work below. We'll accept peer-reviewed journal articles, open-access work, conference presentations, and any other scientific content, as long as it uses Cantera in a significant way. Your submission will be reviewed by a moderator before it's displayed. If you have any questions or would like to remove your paper please <a href="mailto:papers@cantera.org">email the moderators</a>.
+    </p>
+  </div>
 
-    <form hx-post='/submit' hx-swap='outerHTML'>
+    {% if not logged_in %}
+    <p>You must log in with GitHub to submit a paper. This is to reduce spam, we will not use this information to contact you.</p>
+    <p><a class="btn btn-primary" href="/github_login?redirect_uri=submit">Login with GitHub</a></p>
+    {% else %}
+    <p>Welcome {{ actor["gh_name"] }}.</p>
+    {% endif %}
+
+  <div id="thank-you-message"></div>
+
+  <form hx-post='/submit' hx-swap="outerHTML">
+    <div class="form-group">
         <label for='doi'>Enter a DOI: </label>
-        <input type='text' name='doi' id='doi' required>
+        <input class='form-control' placeholder='10.0000/123456.7890' type='text' name='doi' id='doi' required>
+    </div>
+    <div class="form-group">
         <label for='source'>Choose the source for the DOI: </label>
         <select name='source' id='source' required>
             <option value="">--Please choose an option--</option>
@@ -17,11 +34,12 @@
             <option value="zenodo">Zenodo</option>
             <option value="crossref">Crossref</option>
         </select>
-        <input type='submit' value='Submit'{% if not logged_in %} disabled{% endif %}>
-    </form>
-    {% if not logged_in %}
-    <a href="/github_login?redirect_uri=submit" style="appearance: button;">GitHub Login</a>
-    {% else %}
-    Welcome {{ actor["gh_name"] }}. <a href="/logout?redirect_uri=submit">Logout</a>
+    </div>
+    <div class="form-group">
+      <button class="btn btn-primary" type='submit' value='Submit'{% if not logged_in %} disabled{% endif %}>Submit</button>
+    </div>
+  </form>
+    {% if logged_in %}
+    <a href="/logout?redirect_uri=submit">Logout</a>
     {% endif %}
-</body>
+{% endblock %}
